@@ -10,7 +10,7 @@ import (
 func UnaryServerInterceptor(version string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		header := metadata.Pairs("X-Version", version)
-		grpc.SendHeader(ctx, header)
+		grpc.SetHeader(ctx, header)
 		return handler(ctx, req)
 	}
 }
