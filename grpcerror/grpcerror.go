@@ -2,6 +2,7 @@ package grpcerror
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,21 +29,13 @@ type Logger interface {
 
 func UnaryServerInterceptor(logger Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		if v, ok := req.(validatorAll); ok {
-			if err := v.ValidateAll(); err != nil {
-				return nil, FormatValidationError(err)
-			}
-		} else if v, ok := req.(validatorOne); ok {
-			if err := v.Validate(); err != nil {
-				return nil, FormatValidationError(err)
-			}
-		}
 
 		res, err := handler(ctx, req)
 		if err != nil {
 			if _, ok := status.FromError(err); !ok {
+				fmt.Printf("THROW(a): %s\n", err.Error())
 				if logger != nil {
-					logger.ErrorContext(ctx, "hiding unhandled error", "error", err.Error())
+					logger.ErrorContext(ctx, "hiding unhandled error", "errorType", fmt.Sprintf("%T", err), "error", err.Error())
 				}
 				return nil, status.Error(codes.Internal, "Internal Error")
 			}
