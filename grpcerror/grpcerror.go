@@ -9,14 +9,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type validatorOne interface {
-	Validate() error
-}
-
-type validatorAll interface {
-	ValidateAll() error
-}
-
 func FormatValidationError(err error) error {
 	return status.Error(codes.InvalidArgument, err.Error())
 }
