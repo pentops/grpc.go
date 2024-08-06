@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	protovalidate "github.com/bufbuild/protovalidate-go"
-	"github.com/golang/protobuf/ptypes/any"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 
 	"google.golang.org/grpc"
@@ -43,7 +42,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			statusError := spb.Status{
 				Code:    int32(codes.InvalidArgument),
 				Message: fmt.Sprintf("invalid request: %s: %s", first.FieldPath, first.Message),
-				Details: []*any.Any{errorAny},
+				Details: []*anypb.Any{errorAny},
 			}
 			return nil, status.FromProto(&statusError).Err()
 		}
