@@ -14,39 +14,85 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	validator, err := protovalidate.New()
-	if err != nil {
-		panic(err)
+type config struct {
+	reply     bool
+	validator *protovalidate.Validator
+}
+
+type Option func(*config)
+
+func WithReply() Option {
+	return func(c *config) {
+		c.reply = true
+	}
+}
+
+func WithValidator(v *protovalidate.Validator) Option {
+	return func(c *config) {
+		c.validator = v
+	}
+}
+
+func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
+	cfg := &config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	if cfg.validator == nil {
+		validator, err := protovalidate.New()
+		if err != nil {
+			panic(err)
+		}
+		cfg.validator = validator
 	}
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		protoReq, ok := req.(proto.Message)
-		if !ok {
-			return nil, fmt.Errorf("request is not a proto message")
+		if err := runValidate(cfg.validator, req, "request", codes.InvalidArgument); err != nil {
+			return nil, err
 		}
 
-		if err := validator.Validate(protoReq); err != nil {
+		res, err := handler(ctx, req)
+		if err != nil {
+			return nil, err
+		}
 
-			isValidateError, ok := err.(*protovalidate.ValidationError)
-			if !ok {
-				return nil, fmt.Errorf("unknown error type %T", err)
-			}
-
-			errorAny, err := anypb.New(isValidateError.ToProto())
-			if err != nil {
+		if cfg.reply {
+			if err := runValidate(cfg.validator, res, "reply", codes.Internal); err != nil {
 				return nil, err
 			}
-
-			first := isValidateError.Violations[0]
-
-			statusError := spb.Status{
-				Code:    int32(codes.InvalidArgument),
-				Message: fmt.Sprintf("invalid request: %s: %s", first.FieldPath, first.Message),
-				Details: []*anypb.Any{errorAny},
-			}
-			return nil, status.FromProto(&statusError).Err()
 		}
 
-		return handler(ctx, req)
+		return res, nil
 	}
+}
+
+func runValidate(v *protovalidate.Validator, msg any, part string, code codes.Code) error {
+
+	protoMsg, ok := msg.(proto.Message)
+	if !ok {
+		return fmt.Errorf("not a proto message")
+	}
+
+	err := v.Validate(protoMsg)
+	if err == nil {
+		return nil
+	}
+
+	isValidateError, ok := err.(*protovalidate.ValidationError)
+	if !ok {
+		return fmt.Errorf("unknown error type %T", err)
+	}
+
+	errorAny, err := anypb.New(isValidateError.ToProto())
+	if err != nil {
+		return err
+	}
+
+	first := isValidateError.Violations[0]
+
+	statusError := spb.Status{
+		Code:    int32(code),
+		Message: fmt.Sprintf("invalid %s: %s: %s", part, first.FieldPath, first.Message),
+		Details: []*anypb.Any{errorAny},
+	}
+	return status.FromProto(&statusError).Err()
 }
