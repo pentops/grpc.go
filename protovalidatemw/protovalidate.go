@@ -91,8 +91,15 @@ func runValidate(v *protovalidate.Validator, msg any, part string, code codes.Co
 
 	statusError := spb.Status{
 		Code:    int32(code),
-		Message: fmt.Sprintf("invalid %s: %s: %s", part, first.FieldPath, first.Message),
+		Message: fmt.Sprintf("invalid %s: %s: %s", part, stringVal(first.FieldPath), stringVal(first.Message)),
 		Details: []*anypb.Any{errorAny},
 	}
 	return status.FromProto(&statusError).Err()
+}
+
+func stringVal(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
