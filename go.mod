@@ -1,4 +1,4 @@
-module github.com/pentops/go-grpc-helpers
+module github.com/pentops/grpc.go
 
 go 1.22.0
 
