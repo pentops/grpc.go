@@ -3,7 +3,9 @@ package protovalidatemw
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protovalidate "github.com/bufbuild/protovalidate-go"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 
@@ -88,10 +90,27 @@ func runValidate(v *protovalidate.Validator, msg any, part string, code codes.Co
 	}
 
 	first := isValidateError.Violations[0]
+	fieldPath := make([]string, 0, len(first.Proto.Field.Elements))
+	for _, field := range first.Proto.Field.Elements {
+		fieldName := field.GetFieldName()
+		switch st := field.Subscript.(type) {
+		case *validate.FieldPathElement_Index:
+			fieldName += fmt.Sprintf("[%d]", st.Index)
+		case *validate.FieldPathElement_BoolKey:
+			fieldName += fmt.Sprintf("[%t]", st.BoolKey)
+		case *validate.FieldPathElement_StringKey:
+			fieldName += fmt.Sprintf("[%s]", st.StringKey)
+		case *validate.FieldPathElement_IntKey:
+			fieldName += fmt.Sprintf("[%d]", st.IntKey)
+		case *validate.FieldPathElement_UintKey:
+			fieldName += fmt.Sprintf("[%d]", st.UintKey)
+		}
+		fieldPath = append(fieldPath, fieldName)
+	}
 
 	statusError := spb.Status{
 		Code:    int32(code),
-		Message: fmt.Sprintf("invalid %s: %s: %s", part, first.Proto.Field.String(), stringVal(first.Proto.Message)),
+		Message: fmt.Sprintf("invalid %s: %s: %s", part, strings.Join(fieldPath, "."), stringVal(first.Proto.Message)),
 		Details: []*anypb.Any{errorAny},
 	}
 	return status.FromProto(&statusError).Err()
