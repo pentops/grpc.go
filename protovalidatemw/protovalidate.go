@@ -18,7 +18,7 @@ import (
 
 type config struct {
 	reply     bool
-	validator *protovalidate.Validator
+	validator protovalidate.Validator
 }
 
 type Option func(*config)
@@ -29,7 +29,7 @@ func WithReply() Option {
 	}
 }
 
-func WithValidator(v *protovalidate.Validator) Option {
+func WithValidator(v protovalidate.Validator) Option {
 	return func(c *config) {
 		c.validator = v
 	}
@@ -67,8 +67,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	}
 }
 
-func runValidate(v *protovalidate.Validator, msg any, part string, code codes.Code) error {
-
+func runValidate(v protovalidate.Validator, msg any, part string, code codes.Code) error {
 	protoMsg, ok := msg.(proto.Message)
 	if !ok {
 		return fmt.Errorf("not a proto message")
