@@ -69,3 +69,13 @@ func ListenAndServe(ctx context.Context, server GRPCServer, bind string) error {
 	}
 	return Serve(ctx, server, lis)
 }
+
+type EnvConfig struct {
+	GRPCBind string `env:"GRPC_BIND" default:":8080"`
+}
+
+// ListenAndServe starts a listener on the given bind address and serves until
+// the context is done or an error is returned.
+func (cfg EnvConfig) ListenAndServe(ctx context.Context, server GRPCServer) error {
+	return ListenAndServe(ctx, server, cfg.GRPCBind)
+}
