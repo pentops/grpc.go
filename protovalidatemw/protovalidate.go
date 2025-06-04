@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	protovalidate "github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 
 	"google.golang.org/grpc"
